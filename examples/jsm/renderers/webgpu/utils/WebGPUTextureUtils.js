@@ -41,11 +41,6 @@ class WebGPUTextureUtils {
 		this.defaultTexture = null;
 		this.defaultCubeTexture = null;
 
-		this.colorBuffer = null;
-
-		this.depthTexture = new DepthTexture();
-		this.depthTexture.name = 'depthBuffer';
-
 	}
 
 	createSampler( texture ) {
@@ -245,35 +240,37 @@ class WebGPUTextureUtils {
 
 	}
 
-	getColorBuffer() {
-
-		if ( this.colorBuffer ) this.colorBuffer.destroy();
+	getColorBuffer( canvasRenderTarget ) {
 
 		const backend = this.backend;
-		const { width, height } = backend.getDrawingBufferSize();
+		const { width, height } = backend.getDrawingBufferSize( canvasRenderTarget );
 
-		this.colorBuffer = backend.device.createTexture( {
+		let colorBuffer = backend.get( canvasRenderTarget ).colorBuffer;
+
+		if ( colorBuffer ) colorBuffer.destroy();
+
+		colorBuffer = backend.device.createTexture( {
 			label: 'colorBuffer',
 			size: {
 				width: width,
 				height: height,
 				depthOrArrayLayers: 1
 			},
-			sampleCount: backend.parameters.sampleCount,
+			sampleCount: canvasRenderTarget.sampleCount,
 			format: GPUTextureFormat.BGRA8Unorm,
 			usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC
 		} );
 
-		return this.colorBuffer;
+		return colorBuffer;
 
 	}
 
-	getDepthBuffer( depth = true, stencil = true ) {
+	getDepthBuffer( canvasRenderTarget, depth = true, stencil = true ) {
 
 		const backend = this.backend;
-		const { width, height } = backend.getDrawingBufferSize();
+		const { width, height } = backend.getDrawingBufferSize( canvasRenderTarget );
 
-		const depthTexture = this.depthTexture;
+		const depthTexture = canvasRenderTarget.depthTexture;
 		const depthTextureGPU = backend.get( depthTexture ).texture;
 
 		let format, type;
@@ -308,7 +305,7 @@ class WebGPUTextureUtils {
 		depthTexture.image.width = width;
 		depthTexture.image.height = height;
 
-		this.createTexture( depthTexture, { sampleCount: backend.parameters.sampleCount, width, height } );
+		this.createTexture( depthTexture, { sampleCount: canvasRenderTarget.sampleCount, width, height } );
 
 		return backend.get( depthTexture ).texture;
 

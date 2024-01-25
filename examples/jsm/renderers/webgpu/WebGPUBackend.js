@@ -8,6 +8,7 @@ import { GPUFeatureName, GPUTextureFormat, GPULoadOp, GPUStoreOp, GPUIndexFormat
 
 import WGSLNodeBuilder from './nodes/WGSLNodeBuilder.js';
 import Backend from '../common/Backend.js';
+import CanvasRenderTarget from '../common/CanvasRenderTarget.js';
 
 import WebGPUUtils from './utils/WebGPUUtils.js';
 import WebGPUAttributeUtils from './utils/WebGPUAttributeUtils.js';
@@ -26,20 +27,7 @@ class WebGPUBackend extends Backend {
 
 		this.isWebGPUBackend = true;
 
-		// some parameters require default values other than "undefined"
-		this.parameters.alpha = ( parameters.alpha === undefined ) ? true : parameters.alpha;
-
-		this.parameters.antialias = ( parameters.antialias === true );
-
-		if ( this.parameters.antialias === true ) {
-
-			this.parameters.sampleCount = ( parameters.sampleCount === undefined ) ? 4 : parameters.sampleCount;
-
-		} else {
-
-			this.parameters.sampleCount = 1;
-
-		}
+		this._defaultCanvas = new CanvasRenderTarget( parameters );
 
 		this.parameters.requiredLimits = ( parameters.requiredLimits === undefined ) ? {} : parameters.requiredLimits;
 
@@ -47,8 +35,6 @@ class WebGPUBackend extends Backend {
 
 		this.adapter = null;
 		this.device = null;
-		this.context = null;
-		this.colorBuffer = null;
 		this.defaultRenderPassdescriptor = null;
 
 		this.utils = new WebGPUUtils( this );
@@ -103,24 +89,32 @@ class WebGPUBackend extends Backend {
 
 		const device = await adapter.requestDevice( deviceDescriptor );
 
-		const context = ( parameters.context !== undefined ) ? parameters.context : renderer.domElement.getContext( 'webgpu' );
-
 		this.adapter = adapter;
 		this.device = device;
-		this.context = context;
 
-		const alphaMode = parameters.alpha ? 'premultiplied' : 'opaque';
+		this._configureContext( this._defaultCanvas );
 
-		this.context.configure( {
+		this.updateSize();
+
+	}
+
+	_configureContext( canvasRenderTarget ) {
+
+		const renderer = this.renderer;
+		const context =  ( canvasRenderTarget.context !== undefined ) ? canvasRenderTarget.context : renderer.domElement.getContext( 'webgpu' );
+
+		const alphaMode = canvasRenderTarget.alpha ? 'premultiplied' : 'opaque';
+
+		context.configure( {
 			device: this.device,
 			format: GPUTextureFormat.BGRA8Unorm,
 			usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
 			alphaMode: alphaMode
 		} );
 
-		this.updateSize();
+		this.set( canvasRenderTarget, { contextGPU: context } );
 
-	}
+	};
 
 	get coordinateSystem() {
 
@@ -136,15 +130,20 @@ class WebGPUBackend extends Backend {
 
 	getContext() {
 
-		return this.context;
+		return this.get( this._defaultCanvas ).contextGPU;
 
 	}
 
-	_getDefaultRenderPassDescriptor() {
+	_getDefaultRenderPassDescriptor( renderContext ) {
 
 		let descriptor = this.defaultRenderPassdescriptor;
 
-		const antialias = this.parameters.antialias;
+		const renderTarget = renderContext.renderTarget;
+
+		const canvasRenderTarget = renderTarget === undefined ? this._defaultCanvas : renderTarget;
+
+		const antialias = canvasRenderTarget.antialias;
+		const { contextGPU, colorBuffer } = this.get( canvasRenderTarget );
 
 		if ( descriptor === null ) {
 
@@ -155,7 +154,7 @@ class WebGPUBackend extends Backend {
 					view: null
 				} ],
 				depthStencilAttachment: {
-					view: this.textureUtils.getDepthBuffer( renderer.depth, renderer.stencil ).createView()
+					view: this.textureUtils.getDepthBuffer( canvasRenderTarget, renderer.depth, renderer.stencil ).createView()
 				}
 			};
 
@@ -163,7 +162,7 @@ class WebGPUBackend extends Backend {
 
 			if ( antialias === true ) {
 
-				colorAttachment.view = this.colorBuffer.createView();
+				colorAttachment.view = colorBuffer.createView();
 
 			} else {
 
@@ -179,11 +178,11 @@ class WebGPUBackend extends Backend {
 
 		if ( antialias === true ) {
 
-			colorAttachment.resolveTarget = this.context.getCurrentTexture().createView();
+			colorAttachment.resolveTarget = contextGPU.getCurrentTexture().createView();
 
 		} else {
 
-			colorAttachment.view = this.context.getCurrentTexture().createView();
+			colorAttachment.view = contextGPU.getCurrentTexture().createView();
 
 		}
 
@@ -317,7 +316,7 @@ class WebGPUBackend extends Backend {
 
 		if ( renderContext.textures === null ) {
 
-			descriptor = this._getDefaultRenderPassDescriptor();
+			descriptor = this._getDefaultRenderPassDescriptor( renderContext );
 
 		} else {
 
@@ -605,7 +604,7 @@ class WebGPUBackend extends Backend {
 			depth = depth && supportsDepth;
 			stencil = stencil && supportsStencil;
 
-			const descriptor = this._getDefaultRenderPassDescriptor();
+			const descriptor = this._getDefaultRenderPassDescriptor( renderContext );
 
 			if ( color ) {
 
@@ -1208,8 +1207,25 @@ class WebGPUBackend extends Backend {
 
 	updateSize() {
 
-		this.colorBuffer = this.textureUtils.getColorBuffer();
+		const canvasRenderTargetData = this.get( this._defaultCanvas );
+
+		canvasRenderTargetData.colorBuffer = this.textureUtils.getColorBuffer( this._defaultCanvas );
+
 		this.defaultRenderPassdescriptor = null;
+
+	}
+
+	getDrawingBufferSize( canvasRenderTarget ) {
+
+		if ( canvasRenderTarget === this._defaultCanvas ) {
+
+			return super.getDrawingBufferSize();
+
+		} else {
+
+			return { width: 100, height: 100 }; // FIXME
+
+		}
 
 	}
 
@@ -1249,6 +1265,10 @@ class WebGPUBackend extends Backend {
 
 		const renderContextData = this.get( renderContext );
 
+		const renderTarget = renderContext.renderTarget;
+
+		const canvasRenderTarget = renderTarget === undefined ? this._defaultCanvas : renderTarget;
+
 		const { encoder, descriptor } = renderContextData;
 
 		let sourceGPU = null;
@@ -1269,11 +1289,11 @@ class WebGPUBackend extends Backend {
 
 			if ( texture.isDepthTexture ) {
 
-				sourceGPU = this.textureUtils.getDepthBuffer( renderContext.depth, renderContext.stencil );
+				sourceGPU = this.textureUtils.getDepthBuffer( canvasRenderTarget, renderContext.depth, renderContext.stencil );
 
 			} else {
 
-				sourceGPU = this.context.getCurrentTexture();
+				sourceGPU = this.get( canvasRenderTarget ).contextGPU.getCurrentTexture();
 
 			}
 

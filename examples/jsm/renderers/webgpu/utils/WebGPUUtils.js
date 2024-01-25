@@ -84,7 +84,7 @@ class WebGPUUtils {
 
 		}
 
-		return this.backend.parameters.sampleCount;
+		return this.backend._defaultCanvas.sampleCount;
 
 	}
 
