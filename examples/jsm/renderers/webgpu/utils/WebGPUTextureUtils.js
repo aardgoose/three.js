@@ -13,7 +13,7 @@ import {
 	NeverCompare, AlwaysCompare, LessCompare, LessEqualCompare, EqualCompare, GreaterEqualCompare, GreaterCompare, NotEqualCompare
 } from 'three';
 
-import { CubeReflectionMapping, CubeRefractionMapping, EquirectangularReflectionMapping, EquirectangularRefractionMapping, DepthTexture } from 'three';
+import { CubeReflectionMapping, CubeRefractionMapping, EquirectangularReflectionMapping, EquirectangularRefractionMapping } from 'three';
 
 import WebGPUTexturePassUtils from './WebGPUTexturePassUtils.js';
 
