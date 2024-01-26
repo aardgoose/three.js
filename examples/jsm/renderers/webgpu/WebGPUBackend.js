@@ -108,6 +108,7 @@ class WebGPUBackend extends Backend {
 
 		canvasRenderTargetData.contextGPU = context;
 		canvasRenderTargetData.descriptor = null;
+		canvasRenderTargetData.ready = true;
 
 	};
 
@@ -135,7 +136,7 @@ class WebGPUBackend extends Backend {
 
 		const canvasRenderTargetData = this.get( canvasRenderTarget );
 
-		if ( canvasRenderTargetData.contextGPU === undefined ) this._configureContext( canvasRenderTarget );
+		if ( ! canvasRenderTargetData.ready ) this._configureContext( canvasRenderTarget );
 
 		let { contextGPU, descriptor } = canvasRenderTargetData;
 
