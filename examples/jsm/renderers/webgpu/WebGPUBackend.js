@@ -2,7 +2,7 @@
 import 'https://greggman.github.io/webgpu-avoid-redundant-state-setting/webgpu-check-redundant-state-setting.js';
 //*/
 
-import { WebGPUCoordinateSystem } from 'three';
+import { WebGPUCoordinateSystem, Vector2 } from 'three';
 
 import { GPUFeatureName, GPUTextureFormat, GPULoadOp, GPUStoreOp, GPUIndexFormat, GPUTextureViewDimension } from './utils/WebGPUConstants.js';
 
@@ -17,6 +17,7 @@ import WebGPUPipelineUtils from './utils/WebGPUPipelineUtils.js';
 import WebGPUTextureUtils from './utils/WebGPUTextureUtils.js';
 import WebGPU from '../../capabilities/WebGPU.js';
 
+let _vector2;
 //
 
 class WebGPUBackend extends Backend {
@@ -27,15 +28,12 @@ class WebGPUBackend extends Backend {
 
 		this.isWebGPUBackend = true;
 
-		this._defaultCanvas = new CanvasRenderTarget( parameters );
-
 		this.parameters.requiredLimits = ( parameters.requiredLimits === undefined ) ? {} : parameters.requiredLimits;
 
 		this.trackTimestamp = ( parameters.trackTimestamp === true );
 
 		this.adapter = null;
 		this.device = null;
-		this.defaultRenderPassdescriptor = null;
 
 		this.utils = new WebGPUUtils( this );
 		this.attributeUtils = new WebGPUAttributeUtils( this );
@@ -92,6 +90,9 @@ class WebGPUBackend extends Backend {
 		this.adapter = adapter;
 		this.device = device;
 
+		this._defaultCanvas = new CanvasRenderTarget( parameters );
+		this._defaultCanvas.domElement = this.getDomElement();
+
 		this._configureContext( this._defaultCanvas );
 
 		this.updateSize();
@@ -100,8 +101,9 @@ class WebGPUBackend extends Backend {
 
 	_configureContext( canvasRenderTarget ) {
 
-		const renderer = this.renderer;
-		const context =  ( canvasRenderTarget.context !== undefined ) ? canvasRenderTarget.context : renderer.domElement.getContext( 'webgpu' );
+		// FIXME
+		const context = ( canvasRenderTarget.context !== undefined ) ? canvasRenderTarget.context : canvasRenderTarget.domElement.getContext( 'webgpu' );
+		const canvasRenderTargetData = this.get( canvasRenderTarget );
 
 		const alphaMode = canvasRenderTarget.alpha ? 'premultiplied' : 'opaque';
 
@@ -112,7 +114,9 @@ class WebGPUBackend extends Backend {
 			alphaMode: alphaMode
 		} );
 
-		this.set( canvasRenderTarget, { contextGPU: context } );
+		canvasRenderTargetData.contextGPU = context;
+
+		canvasRenderTargetData.descriptor = null;
 
 	};
 
@@ -136,14 +140,16 @@ class WebGPUBackend extends Backend {
 
 	_getDefaultRenderPassDescriptor( renderContext ) {
 
-		let descriptor = this.defaultRenderPassdescriptor;
-
 		const renderTarget = renderContext.renderTarget;
-
-		const canvasRenderTarget = renderTarget === undefined ? this._defaultCanvas : renderTarget;
+		const canvasRenderTarget = renderTarget === null ? this._defaultCanvas : renderTarget;
 
 		const antialias = canvasRenderTarget.antialias;
-		const { contextGPU, colorBuffer } = this.get( canvasRenderTarget );
+
+		const canvasRenderTargetData = this.get( canvasRenderTarget );
+
+		if ( canvasRenderTargetData.contextGPU === undefined ) this._configureContext( canvasRenderTarget );
+
+		let { contextGPU, descriptor } = canvasRenderTargetData;
 
 		if ( descriptor === null ) {
 
@@ -162,7 +168,7 @@ class WebGPUBackend extends Backend {
 
 			if ( antialias === true ) {
 
-				colorAttachment.view = colorBuffer.createView();
+				colorAttachment.view = this.textureUtils.getColorBuffer( canvasRenderTarget ).createView();
 
 			} else {
 
@@ -170,7 +176,7 @@ class WebGPUBackend extends Backend {
 
 			}
 
-			this.defaultRenderPassdescriptor = descriptor;
+			canvasRenderTargetData.descriptor = descriptor;
 
 		}
 
@@ -1209,9 +1215,7 @@ class WebGPUBackend extends Backend {
 
 		const canvasRenderTargetData = this.get( this._defaultCanvas );
 
-		canvasRenderTargetData.colorBuffer = this.textureUtils.getColorBuffer( this._defaultCanvas );
-
-		this.defaultRenderPassdescriptor = null;
+		canvasRenderTargetData.descriptor = null;
 
 	}
 
@@ -1223,7 +1227,9 @@ class WebGPUBackend extends Backend {
 
 		} else {
 
-			return { width: 100, height: 100 }; // FIXME
+			_vector2 = _vector2 || new Vector2();
+
+			return canvasRenderTarget.getDrawingBufferSize( _vector2 );
 
 		}
 

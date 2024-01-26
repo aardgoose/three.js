@@ -19,6 +19,10 @@ class RenderContexts {
 
 			attachmentState = 'default';
 
+		} else if ( renderTarget.isCanvasRenderTarget ) {
+
+			attachmentState = 'default';
+
 		} else {
 
 			let format, count;

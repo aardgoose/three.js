@@ -245,7 +245,9 @@ class WebGPUTextureUtils {
 		const backend = this.backend;
 		const { width, height } = backend.getDrawingBufferSize( canvasRenderTarget );
 
-		let colorBuffer = backend.get( canvasRenderTarget ).colorBuffer;
+		const canvasRenderTargetData = backend.get( canvasRenderTarget );
+
+		let colorBuffer = canvasRenderTargetData.colorBuffer;
 
 		if ( colorBuffer ) colorBuffer.destroy();
 
@@ -260,6 +262,8 @@ class WebGPUTextureUtils {
 			format: GPUTextureFormat.BGRA8Unorm,
 			usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC
 		} );
+
+		canvasRenderTargetData.colorBuffer = colorBuffer;
 
 		return colorBuffer;
 

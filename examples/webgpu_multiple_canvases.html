@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgpu - Multiple Canvases</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+	</head>
+	<body>
+		<div id="info">
+			<a href="https://threejs.org" target="_blank">threejs</a> webgpu - Multiple RenderTargets
+		</div>
+
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../build/three.module.js",
+					"three/addons/": "./jsm/",
+					"three/nodes": "./jsm/nodes/Nodes.js"
+				}
+			}
+		</script>
+
+		<script type="module">
+
+			import * as THREE from 'three';
+
+			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+			import { MeshBasicNodeMaterial } from 'three/nodes';
+			import WebGPU from 'three/addons/capabilities/WebGPU.js';
+
+			import WebGPURenderer from 'three/addons/renderers/webgpu/WebGPURenderer.js';
+			import CanvasRenderTarget from 'three/addons/renderers/common/CanvasRenderTarget.js';
+
+			import QuadMesh from 'three/addons/objects/QuadMesh.js';
+
+			let camera, scene, renderer, torus;
+			let canvasRenderTarget;
+
+
+			init();
+
+			function init() {
+
+				if ( ! WebGPU.isAvailable() ) {
+
+					document.body.appendChild( WebGPU.getErrorMessage() );
+
+					throw new Error( 'No WebGPU or WebGL2 support' );
+
+				}
+
+				renderer = new WebGPURenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setAnimationLoop( render );
+				document.body.appendChild( renderer.domElement );
+
+
+				// create canvas render target
+
+				const domElement = document.getElementById( "demo" );
+
+				canvasRenderTarget = new CanvasRenderTarget( { domElement, antialias: true } );
+				canvasRenderTarget.setPixelRatio( window.devicePixelRatio );
+				canvasRenderTarget.setSize( domElement.clientWidth, domElement.clientHeight );
+
+
+				// Scene setup
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0x222222 );
+
+				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 50 );
+				camera.position.z = 4;
+
+
+				torus = new THREE.Mesh(
+					new THREE.TorusKnotGeometry( 1, 0.3, 128, 32 ),
+					new MeshBasicNodeMaterial()
+				);
+
+				scene.add( torus );
+
+				new OrbitControls( camera, renderer.domElement );
+
+				window.addEventListener( 'resize', onWindowResize );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function render( time ) {
+
+				torus.rotation.y = ( time / 1000 ) * .4;
+
+				renderer.setRenderTarget( canvasRenderTarget );
+				renderer.render( scene, camera );
+
+				renderer.setRenderTarget( null );
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+		<canvas id="demo" style="border: 1px solid lime; transform: skewY(20deg) rotate( 35deg); width: 100px; height: 100px; position: absolute; top: 0px">bbb</canvas>
+	</body>
+</html>

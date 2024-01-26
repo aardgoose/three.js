@@ -6,7 +6,7 @@ class CanvasRenderTarget {
 
 		this.isCanvasRenderTarget = true;
 
-		this.canvas = parameters.canvas;
+		this.context = parameters.context;
 		this.domElement = parameters.domElement;
 		this.alpha = ( parameters.alpha === undefined ) ? true : parameters.alpha;
 
@@ -22,8 +22,45 @@ class CanvasRenderTarget {
 
 		}
 
-		this.colorBuffer = null;
 		this.depthTexture = new DepthTexture();
+
+		this.depthBuffer = true;
+		this.stencilBuffer = true;
+
+		this._width = 0;
+		this._height = 0;
+		this._pixelRatio = 1;
+
+	}
+
+	getDrawingBufferSize( target ) {
+
+		return target.set( this._width * this._pixelRatio, this._height * this._pixelRatio ).floor();
+
+	}
+
+	setPixelRatio( value = 1 ) {
+
+		this._pixelRatio = value;
+
+		this.setSize( this._width, this._height, false );
+
+	}
+
+	setSize( width, height, updateStyle = true ) {
+
+		this._width = width;
+		this._height = height;
+
+		this.domElement.width = Math.floor( width * this._pixelRatio );
+		this.domElement.height = Math.floor( height * this._pixelRatio );
+
+		if ( updateStyle === true ) {
+
+			this.domElement.style.width = width + 'px';
+			this.domElement.style.height = height + 'px';
+
+		}
 
 	}
 

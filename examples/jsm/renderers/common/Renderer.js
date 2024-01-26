@@ -359,7 +359,7 @@ class Renderer {
 		let scissor = this._scissor;
 		let pixelRatio = this._pixelRatio;
 
-		if ( renderTarget !== null ) {
+		if ( renderTarget !== null && ! renderTarget.isCanvasRenderTarget ) {
 
 			viewport = renderTarget.viewport;
 			scissor = renderTarget.scissor;
@@ -412,14 +412,19 @@ class Renderer {
 
 		if ( renderTarget !== null ) {
 
-			this._textures.updateRenderTarget( renderTarget, activeMipmapLevel );
+			if ( ! renderTarget.isCanvasRenderTarget ) {
 
-			const renderTargetData = this._textures.get( renderTarget );
+				this._textures.updateRenderTarget( renderTarget, activeMipmapLevel );
 
-			renderContext.textures = renderTargetData.textures;
-			renderContext.depthTexture = renderTargetData.depthTexture;
-			renderContext.width = renderTargetData.width;
-			renderContext.height = renderTargetData.height;
+				const renderTargetData = this._textures.get( renderTarget );
+
+				renderContext.textures = renderTargetData.textures;
+				renderContext.depthTexture = renderTargetData.depthTexture;
+				renderContext.width = renderTargetData.width;
+				renderContext.height = renderTargetData.height;
+
+			}
+
 			renderContext.renderTarget = renderTarget;
 			renderContext.depth = renderTarget.depthBuffer;
 			renderContext.stencil = renderTarget.stencilBuffer;
@@ -434,6 +439,8 @@ class Renderer {
 			renderContext.stencil = this.stencil;
 
 		}
+
+		renderContext.renderTarget = renderTarget;
 
 		renderContext.width >>= activeMipmapLevel;
 		renderContext.height >>= activeMipmapLevel;
@@ -769,7 +776,7 @@ class Renderer {
 
 		const renderTarget = this._renderTarget;
 
-		if ( renderTarget !== null ) {
+		if ( renderTarget !== null && ! renderTarget.isCanvasRenderTarget ) {
 
 			const texture = renderTarget.texture;
 
