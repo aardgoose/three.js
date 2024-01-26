@@ -7,13 +7,15 @@
 		<link type="text/css" rel="stylesheet" href="main.css">
 		<style>
 			.container {
+				padding-top: 3em;
 				display: grid;
 				grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 				justify-items: center;
+				column-gap: 10px;
 				row-gap: 10px;
 			}
 
-			.grid-canvas {
+			.container canvas {
 				width: 200px;
 				height: 200px;
 				border: 1px solid white;
@@ -39,8 +41,6 @@
 
 			import * as THREE from 'three';
 
-			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
 			import { MeshBasicNodeMaterial } from 'three/nodes';
 			import WebGPU from 'three/addons/capabilities/WebGPU.js';
 
@@ -49,8 +49,10 @@
 
 			import QuadMesh from 'three/addons/objects/QuadMesh.js';
 
-			let camera, scene, renderer, torus;
+			let camera, scene, renderer, torus, torusKnot;
 			let canvasRenderTargets = [];
+			let scenes = [];
+			let objects = [];
 
 			init();
 
@@ -66,6 +68,20 @@
 
 			}
 
+			function makeScene( srcObject ) {
+
+				const object = srcObject.clone();
+				const scene = new THREE.Scene();
+
+				objects.push( object );
+				scenes.push( scene );
+
+				scene.background = new THREE.Color( 0x222222 );
+
+				scene.add( object );
+
+			}
+
 			function init() {
 
 				if ( ! WebGPU.isAvailable() ) {
@@ -77,11 +93,7 @@
 				}
 
 				renderer = new WebGPURenderer( { antialias: true } );
-				renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.setAnimationLoop( render );
-				document.body.appendChild( renderer.domElement );
-
 
 				// create canvas render target
 
@@ -93,59 +105,59 @@
 
 				// Scene setup
 
-				scene = new THREE.Scene();
-				scene.background = new THREE.Color( 0x222222 );
-
-				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 50 );
+				camera = new THREE.PerspectiveCamera( 70, 1, 0.1, 50 );
 				camera.position.z = 4;
 
-
 				torus = new THREE.Mesh(
-					new THREE.TorusKnotGeometry( 1, 0.3, 128, 32 ),
-					new MeshBasicNodeMaterial()
+					new THREE.TorusGeometry( 1, 0.3, 128, 32 ),
+					new MeshBasicNodeMaterial( { color: 0x008800 })
 				);
 
-				scene.add( torus );
+				torusKnot = new THREE.Mesh(
+					new THREE.TorusKnotGeometry( 1, 0.3, 128, 32 ),
+					new MeshBasicNodeMaterial( { color: 0x880000 })
+				);
 
-				new OrbitControls( camera, renderer.domElement );
 
-				window.addEventListener( 'resize', onWindowResize );
+				makeScene( torus );
+				makeScene( torusKnot );
+				makeScene( torus );
+
+				makeScene( torusKnot );
+				makeScene( torus );
+				makeScene( torusKnot );
+
+				makeScene( torus );
+				makeScene( torusKnot );
+				makeScene( torus );
 
 			}
 
-			function onWindowResize() {
-
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
-
-				renderer.setSize( window.innerWidth, window.innerHeight );
-
-			}
 
 			function render( time ) {
 
-				torus.rotation.y = ( time / 1000 ) * .4;
-
 				for ( let i = 0; i < 9; i ++ ) {
 
+					objects[ i ].rotation.y = ( time / 1000 ) * .4 * ( i + 1 ) * ( i % 2 ? 1 : -1 );
+
 					renderer.setRenderTarget( canvasRenderTargets[ i ] );
-					renderer.render( scene, camera );
+					renderer.render( scenes[ i ], camera );
 
 				}
 
 			}
 
 		</script>
-		<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); justify-items: center; row-gap: 10px">
-			<canvas class="grid-canvas" id="canvas0"></canvas>
-			<canvas class="grid-canvas" id="canvas1"></canvas>
-			<canvas class="grid-canvas" id="canvas2"></canvas>
-			<canvas class="grid-canvas" id="canvas3"></canvas>
-			<canvas class="grid-canvas" id="canvas4"></canvas>
-			<canvas class="grid-canvas" id="canvas5"></canvas>
-			<canvas class="grid-canvas" id="canvas6"></canvas>
-			<canvas class="grid-canvas" id="canvas7"></canvas>
-			<canvas class="grid-canvas" id="canvas8"></canvas>
+		<div class="container">
+			<canvas id="canvas0"></canvas>
+			<canvas id="canvas1"></canvas>
+			<canvas id="canvas2"></canvas>
+			<canvas id="canvas3"></canvas>
+			<canvas id="canvas4"></canvas>
+			<canvas id="canvas5"></canvas>
+			<canvas id="canvas6"></canvas>
+			<canvas id="canvas7"></canvas>
+			<canvas id="canvas8"></canvas>
 		</div>
 	</body>
 </html>
