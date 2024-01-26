@@ -5,10 +5,24 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<link type="text/css" rel="stylesheet" href="main.css">
+		<style>
+			.container {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+				justify-items: center;
+				row-gap: 10px;
+			}
+
+			.grid-canvas {
+				width: 200px;
+				height: 200px;
+				border: 1px solid white;
+			}
+		</style>
 	</head>
 	<body>
 		<div id="info">
-			<a href="https://threejs.org" target="_blank">threejs</a> webgpu - Multiple RenderTargets
+			<a href="https://threejs.org" target="_blank">threejs</a> webgpu - Multiple Canvases
 		</div>
 
 		<script type="importmap">
@@ -36,10 +50,21 @@
 			import QuadMesh from 'three/addons/objects/QuadMesh.js';
 
 			let camera, scene, renderer, torus;
-			let canvasRenderTarget;
-
+			let canvasRenderTargets = [];
 
 			init();
+
+			function makeCanvasRenderTarget( id ) {
+
+				const domElement = document.getElementById( id );
+
+				const canvasRenderTarget = new CanvasRenderTarget( { domElement, antialias: true } );
+				canvasRenderTarget.setPixelRatio( window.devicePixelRatio );
+				canvasRenderTarget.setSize( domElement.clientWidth, domElement.clientHeight );
+
+				return canvasRenderTarget;
+
+			}
 
 			function init() {
 
@@ -60,12 +85,11 @@
 
 				// create canvas render target
 
-				const domElement = document.getElementById( "demo" );
+				for ( let i = 0; i < 9; i ++ ) {
 
-				canvasRenderTarget = new CanvasRenderTarget( { domElement, antialias: true } );
-				canvasRenderTarget.setPixelRatio( window.devicePixelRatio );
-				canvasRenderTarget.setSize( domElement.clientWidth, domElement.clientHeight );
+					canvasRenderTargets.push( makeCanvasRenderTarget( `canvas${ i }` ) );
 
+				}
 
 				// Scene setup
 
@@ -102,15 +126,26 @@
 
 				torus.rotation.y = ( time / 1000 ) * .4;
 
-				renderer.setRenderTarget( canvasRenderTarget );
-				renderer.render( scene, camera );
+				for ( let i = 0; i < 9; i ++ ) {
 
-				renderer.setRenderTarget( null );
-				renderer.render( scene, camera );
+					renderer.setRenderTarget( canvasRenderTargets[ i ] );
+					renderer.render( scene, camera );
+
+				}
 
 			}
 
 		</script>
-		<canvas id="demo" style="border: 1px solid lime; transform: skewY(20deg) rotate( 35deg); width: 100px; height: 100px; position: absolute; top: 0px">bbb</canvas>
+		<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); justify-items: center; row-gap: 10px">
+			<canvas class="grid-canvas" id="canvas0"></canvas>
+			<canvas class="grid-canvas" id="canvas1"></canvas>
+			<canvas class="grid-canvas" id="canvas2"></canvas>
+			<canvas class="grid-canvas" id="canvas3"></canvas>
+			<canvas class="grid-canvas" id="canvas4"></canvas>
+			<canvas class="grid-canvas" id="canvas5"></canvas>
+			<canvas class="grid-canvas" id="canvas6"></canvas>
+			<canvas class="grid-canvas" id="canvas7"></canvas>
+			<canvas class="grid-canvas" id="canvas8"></canvas>
+		</div>
 	</body>
 </html>
