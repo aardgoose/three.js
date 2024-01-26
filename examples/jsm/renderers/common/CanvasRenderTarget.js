@@ -1,4 +1,4 @@
-import { DepthTexture } from 'three';
+import { DepthTexture, Vector4 } from 'three';
 
 class CanvasRenderTarget {
 
@@ -24,26 +24,58 @@ class CanvasRenderTarget {
 
 		this.depthTexture = new DepthTexture();
 
-		this.depthBuffer = true;
-		this.stencilBuffer = true;
+		this.depth = true;
+		this.stencil = true;
 
 		this._width = 0;
 		this._height = 0;
-		this._pixelRatio = 1;
+		this.pixelRatio = 1;
+
+		this.viewport = new Vector4( 0, 0, this._width, this._height );
+		this.scissor = new Vector4( 0, 0, this._width, this._height );
+		this._scissorTest = false;
+
+	}
+
+	getPixelRatio() {
+
+		return this.pixelRatio;
 
 	}
 
 	getDrawingBufferSize( target ) {
 
-		return target.set( this._width * this._pixelRatio, this._height * this._pixelRatio ).floor();
+		return target.set( this._width * this.pixelRatio, this._height * this.pixelRatio ).floor();
+
+	}
+
+	getSize( target ) {
+
+		return target.set( this._width, this._height );
 
 	}
 
 	setPixelRatio( value = 1 ) {
 
-		this._pixelRatio = value;
+		this.pixelRatio = value;
 
 		this.setSize( this._width, this._height, false );
+
+	}
+
+	setDrawingBufferSize( width, height, pixelRatio ) {
+
+		this._width = width;
+		this._height = height;
+
+		this.pixelRatio = pixelRatio;
+
+		this.domElement.width = Math.floor( width * pixelRatio );
+		this.domElement.height = Math.floor( height * pixelRatio );
+
+		this.setViewport( 0, 0, width, height );
+
+		//if ( this._initialized ) this.backend.updateSize();
 
 	}
 
@@ -52,8 +84,8 @@ class CanvasRenderTarget {
 		this._width = width;
 		this._height = height;
 
-		this.domElement.width = Math.floor( width * this._pixelRatio );
-		this.domElement.height = Math.floor( height * this._pixelRatio );
+		this.domElement.width = Math.floor( width * this.pixelRatio );
+		this.domElement.height = Math.floor( height * this.pixelRatio );
 
 		if ( updateStyle === true ) {
 
@@ -61,6 +93,70 @@ class CanvasRenderTarget {
 			this.domElement.style.height = height + 'px';
 
 		}
+
+		this.setViewport( 0, 0, width, height );
+
+		//if ( this._initialized ) this.backend.updateSize();
+
+	}
+
+	getScissor( target ) {
+
+		const scissor = this._scissor;
+
+		target.x = scissor.x;
+		target.y = scissor.y;
+		target.width = scissor.width;
+		target.height = scissor.height;
+
+		return target;
+
+	}
+
+	setScissor( x, y, width, height ) {
+
+		const scissor = this.scissor;
+
+		if ( x.isVector4 ) {
+
+			scissor.copy( x );
+
+		} else {
+
+			scissor.set( x, y, width, height );
+
+		}
+
+	}
+
+	getScissorTest() {
+
+		return this._scissorTest;
+
+	}
+
+	getViewport( target ) {
+
+		return target.copy( this.viewport );
+
+	}
+
+	setViewport( x, y, width, height, minDepth = 0, maxDepth = 1 ) {
+
+		const viewport = this.viewport;
+
+		if ( x.isVector4 ) {
+
+			viewport.copy( x );
+
+		} else {
+
+			viewport.set( x, y, width, height );
+
+		}
+
+		viewport.minDepth = minDepth;
+		viewport.maxDepth = maxDepth;
 
 	}
 

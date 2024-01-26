@@ -78,13 +78,7 @@ class WebGPUUtils {
 
 	getSampleCount( renderContext ) {
 
-		if ( renderContext.textures !== null ) {
-
-			return renderContext.sampleCount;
-
-		}
-
-		return this.backend._defaultCanvas.sampleCount;
+		return renderContext.sampleCount;
 
 	}
 

@@ -12,6 +12,7 @@ import Background from './Background.js';
 import Nodes from './nodes/Nodes.js';
 import Color4 from './Color4.js';
 import { Scene, Frustum, Matrix4, Vector2, Vector3, Vector4, DoubleSide, BackSide, FrontSide, SRGBColorSpace, NoToneMapping } from 'three';
+import CanvasRenderTarget from './CanvasRenderTarget.js';
 
 const _scene = new Scene();
 const _drawingBufferSize = new Vector2();
@@ -63,11 +64,7 @@ class Renderer {
 		// internals
 
 		this._pixelRatio = 1;
-		this._width = this.domElement.width;
-		this._height = this.domElement.height;
 
-		this._viewport = new Vector4( 0, 0, this._width, this._height );
-		this._scissor = new Vector4( 0, 0, this._width, this._height );
 		this._scissorTest = false;
 
 		this._attributes = null;
@@ -82,6 +79,10 @@ class Renderer {
 		this._textures = null;
 		this._background = null;
 
+		const p = Object.assign( {}, parameters );
+		p.domElement = this.domElement;
+
+		this._defaultCanvasRenderTarget = new CanvasRenderTarget( p );
 		this._currentRenderContext = null;
 
 		this._opaqueSort = null;
@@ -199,7 +200,7 @@ class Renderer {
 
 		if ( targetScene === null ) targetScene = scene;
 
-		const renderTarget = this._renderTarget;
+		const renderTarget = this._renderTarget || this._defaultCanvasRenderTarget;
 		const renderContext = this._renderContexts.get( targetScene, camera, renderTarget );
 		const activeMipmapLevel = this._activeMipmapLevel;
 
@@ -220,8 +221,8 @@ class Renderer {
 
 		//
 
-		renderContext.depth = this.depth;
-		renderContext.stencil = this.stencil;
+		renderContext.depth = renderTarget.depth;
+		renderContext.stencil = renderTarget.stencil;
 
 		//
 
@@ -253,7 +254,12 @@ class Renderer {
 
 		//
 
-		if ( renderTarget !== null ) {
+		if ( renderTarget.isCanvasRenderTarget ) {
+
+			renderContext.textures = null;
+			renderContext.depthTexture = null;
+
+		} else {
 
 			this._textures.updateRenderTarget( renderTarget, activeMipmapLevel );
 
@@ -261,11 +267,6 @@ class Renderer {
 
 			renderContext.textures = renderTargetData.textures;
 			renderContext.depthTexture = renderTargetData.depthTexture;
-
-		} else {
-
-			renderContext.textures = null;
-			renderContext.depthTexture = null;
 
 		}
 
@@ -318,13 +319,14 @@ class Renderer {
 
 		const sceneRef = ( scene.isScene === true ) ? scene : _scene;
 
-		const renderTarget = this._renderTarget;
+		const renderTarget = this._renderTarget || this._defaultCanvasRenderTarget;
 		const renderContext = this._renderContexts.get( scene, camera, renderTarget );
 		const activeCubeFace = this._activeCubeFace;
 		const activeMipmapLevel = this._activeMipmapLevel;
 
 		this._currentRenderContext = renderContext;
 		this._currentRenderObjectFunction = this._renderObjectFunction || this.renderObject;
+
 
 		//
 
@@ -355,19 +357,11 @@ class Renderer {
 
 		//
 
-		let viewport = this._viewport;
-		let scissor = this._scissor;
-		let pixelRatio = this._pixelRatio;
+		let viewport = renderTarget.viewport;
+		let scissor = renderTarget.scissor;
+		let pixelRatio = renderTarget.pixelRatio ? renderTarget.pixelRatio : 1;
 
-		if ( renderTarget !== null && ! renderTarget.isCanvasRenderTarget ) {
-
-			viewport = renderTarget.viewport;
-			scissor = renderTarget.scissor;
-			pixelRatio = 1;
-
-		}
-
-		this.getDrawingBufferSize( _drawingBufferSize );
+		this._defaultCanvasRenderTarget.getDrawingBufferSize( _drawingBufferSize );
 
 		_screen.set( 0, 0, _drawingBufferSize.width, _drawingBufferSize.height );
 
@@ -382,7 +376,7 @@ class Renderer {
 		renderContext.viewport = renderContext.viewportValue.equals( _screen ) === false;
 
 		renderContext.scissorValue.copy( scissor ).multiplyScalar( pixelRatio ).floor();
-		renderContext.scissor = this._scissorTest && renderContext.scissorValue.equals( _screen ) === false;
+		renderContext.scissor = this._defaultCanvasRenderTarget._scissorTest && renderContext.scissorValue.equals( _screen ) === false;
 		renderContext.scissorValue.width >>= activeMipmapLevel;
 		renderContext.scissorValue.height >>= activeMipmapLevel;
 
@@ -410,33 +404,29 @@ class Renderer {
 
 		//
 
-		if ( renderTarget !== null ) {
-
-			if ( ! renderTarget.isCanvasRenderTarget ) {
-
-				this._textures.updateRenderTarget( renderTarget, activeMipmapLevel );
-
-				const renderTargetData = this._textures.get( renderTarget );
-
-				renderContext.textures = renderTargetData.textures;
-				renderContext.depthTexture = renderTargetData.depthTexture;
-				renderContext.width = renderTargetData.width;
-				renderContext.height = renderTargetData.height;
-
-			}
-
-			renderContext.renderTarget = renderTarget;
-			renderContext.depth = renderTarget.depthBuffer;
-			renderContext.stencil = renderTarget.stencilBuffer;
-
-		} else {
+		if ( renderTarget.isCanvasRenderTarget ) {
 
 			renderContext.textures = null;
 			renderContext.depthTexture = null;
-			renderContext.width = this.domElement.width;
-			renderContext.height = this.domElement.height;
-			renderContext.depth = this.depth;
-			renderContext.stencil = this.stencil;
+			renderContext.renderTarget = renderTarget;
+			renderContext.depth = renderTarget.depth;
+			renderContext.stencil = renderTarget.stencil;
+			renderContext.width = renderTarget.domElement.width;
+			renderContext.height = renderTarget.domElement.height;
+			renderContext.sampleCount = renderTarget.sampleCount;
+
+		} else {
+
+			this._textures.updateRenderTarget( renderTarget, activeMipmapLevel );
+
+			const renderTargetData = this._textures.get( renderTarget );
+
+			renderContext.textures = renderTargetData.textures;
+			renderContext.depthTexture = renderTargetData.depthTexture;
+			renderContext.width = renderTargetData.width;
+			renderContext.height = renderTargetData.height;
+			renderContext.depth = renderTarget.depthBuffer;
+			renderContext.stencil = renderTarget.stencilBuffer;
 
 		}
 
@@ -531,70 +521,51 @@ class Renderer {
 
 	getContext() {
 
-		return this.backend.getContext();
+		return this.backend.getContext( this._defaultCanvasRenderTarget );
 
 	}
 
 	getPixelRatio() {
 
-		return this._pixelRatio;
+		return this._defaultCanvasRenderTarget.pixelRatio;
 
 	}
 
 	getDrawingBufferSize( target ) {
 
-		return target.set( this._width * this._pixelRatio, this._height * this._pixelRatio ).floor();
+		return this._defaultCanvasRenderTarget.getDrawingBufferSize( target );
 
 	}
 
 	getSize( target ) {
 
-		return target.set( this._width, this._height );
+		return this._defaultCanvasRenderTarget.getSize( target );
 
 	}
 
 	setPixelRatio( value = 1 ) {
 
-		this._pixelRatio = value;
-
-		this.setSize( this._width, this._height, false );
+		this._defaultCanvasRenderTarget.setPixelRatio( value );
 
 	}
 
 	setDrawingBufferSize( width, height, pixelRatio ) {
 
-		this._width = width;
-		this._height = height;
+		const canvasRenderTarget = this._defaultCanvasRenderTarget;
 
-		this._pixelRatio = pixelRatio;
+		canvasRenderTarget.setDrawingBufferSize( width, height, pixelRatio );
 
-		this.domElement.width = Math.floor( width * pixelRatio );
-		this.domElement.height = Math.floor( height * pixelRatio );
-
-		this.setViewport( 0, 0, width, height );
-
-		if ( this._initialized ) this.backend.updateSize();
+		if ( this._initialized ) this.backend.updateSize( canvasRenderTarget );
 
 	}
 
 	setSize( width, height, updateStyle = true ) {
 
-		this._width = width;
-		this._height = height;
+		const canvasRenderTarget = this._defaultCanvasRenderTarget;
 
-		this.domElement.width = Math.floor( width * this._pixelRatio );
-		this.domElement.height = Math.floor( height * this._pixelRatio );
+		canvasRenderTarget.setSize( width, height, updateStyle );
 
-		if ( updateStyle === true ) {
-
-			this.domElement.style.width = width + 'px';
-			this.domElement.style.height = height + 'px';
-
-		}
-
-		this.setViewport( 0, 0, width, height );
-
-		if ( this._initialized ) this.backend.updateSize();
+		if ( this._initialized ) this.backend.updateSize( canvasRenderTarget );
 
 	}
 
@@ -612,42 +583,25 @@ class Renderer {
 
 	getScissor( target ) {
 
-		const scissor = this._scissor;
-
-		target.x = scissor.x;
-		target.y = scissor.y;
-		target.width = scissor.width;
-		target.height = scissor.height;
-
-		return target;
+		return this._defaultCanvasRenderTarget.getScissor( target );
 
 	}
 
 	setScissor( x, y, width, height ) {
 
-		const scissor = this._scissor;
-
-		if ( x.isVector4 ) {
-
-			scissor.copy( x );
-
-		} else {
-
-			scissor.set( x, y, width, height );
-
-		}
+		this._defaultCanvasRenderTarget.setScissor( x, y, height );
 
 	}
 
 	getScissorTest() {
 
-		return this._scissorTest;
+		return this._defaultCanvasRenderTarget._scissorTest;
 
 	}
 
 	setScissorTest( boolean ) {
 
-		this._scissorTest = boolean;
+		this._defaultCanvasRenderTarget._scissorTest = boolean;
 
 		this.backend.setScissorTest( boolean );
 
@@ -655,26 +609,13 @@ class Renderer {
 
 	getViewport( target ) {
 
-		return target.copy( this._viewport );
+		return this._defaultCanvasRenderTarget.getViewport( target );
 
 	}
 
 	setViewport( x, y, width, height, minDepth = 0, maxDepth = 1 ) {
 
-		const viewport = this._viewport;
-
-		if ( x.isVector4 ) {
-
-			viewport.copy( x );
-
-		} else {
-
-			viewport.set( x, y, width, height );
-
-		}
-
-		viewport.minDepth = minDepth;
-		viewport.maxDepth = maxDepth;
+		return this._defaultCanvasRenderTarget.setViewport( x, y, width, height, minDepth, maxDepth );
 
 	}
 
@@ -740,9 +681,9 @@ class Renderer {
 		if ( this._initialized === false ) await this.init();
 
 		let renderTargetData = null;
-		const renderTarget = this._renderTarget;
+		const renderTarget = this._renderTarget || this._defaultCanvasRenderTarget;
 
-		if ( renderTarget !== null ) {
+		if ( ! renderTarget.isCanvasRenderTarget ) {
 
 			this._textures.updateRenderTarget( renderTarget );
 
@@ -750,7 +691,7 @@ class Renderer {
 
 		}
 
-		this.backend.clear( color, depth, stencil, renderTargetData );
+		this.backend.clear( color, depth, stencil, renderTargetData, renderTarget );
 
 	}
 

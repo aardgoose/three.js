@@ -21,7 +21,7 @@ class RenderContexts {
 
 		} else if ( renderTarget.isCanvasRenderTarget ) {
 
-			attachmentState = 'default';
+			attachmentState = 'default'; // @TODO distinguish sample antialias config
 
 		} else {
 
