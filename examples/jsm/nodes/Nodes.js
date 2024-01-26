@@ -120,6 +120,7 @@ export { default as GaussianBlurNode, gaussianBlur } from './display/GaussianBlu
 export { default as AfterImageNode, afterImage } from './display/AfterImageNode.js';
 
 export { default as PassNode, pass, depthPass } from './display/PassNode.js';
+export { default as TeeNode, tee } from './display/TeeNode.js';
 
 // code
 export { default as ExpressionNode, expression } from './code/ExpressionNode.js';
