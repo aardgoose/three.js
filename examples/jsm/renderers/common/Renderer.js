@@ -370,7 +370,6 @@ class Renderer {
 		renderContext.viewport = renderContext.viewportValue.equals( _screen ) === false;
 
 		renderContext.scissorValue.copy( scissor ).multiplyScalar( pixelRatio ).floor();
-//		renderContext.scissor = this._defaultCanvasRenderTarget._scissorTest && renderContext.scissorValue.equals( _screen ) === false;
 		renderContext.scissor = renderTarget._scissorTest && renderContext.scissorValue.equals( _screen ) === false;
 		renderContext.scissorValue.width >>= activeMipmapLevel;
 		renderContext.scissorValue.height >>= activeMipmapLevel;
