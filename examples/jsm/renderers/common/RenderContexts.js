@@ -15,13 +15,9 @@ class RenderContexts {
 
 		let attachmentState;
 
-		if ( renderTarget === null ) {
+		if ( renderTarget.isCanvasRenderTarget ) {
 
-			attachmentState = 'default';
-
-		} else if ( renderTarget.isCanvasRenderTarget ) {
-
-			attachmentState = 'default'; // @TODO distinguish sample antialias config
+			attachmentState = `${ renderTarget.samples }:${ renderTarget.depth }:${ renderTarget.stencil }`;
 
 		} else {
 

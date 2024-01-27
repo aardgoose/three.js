@@ -1,4 +1,4 @@
-import { DepthTexture, Vector4 } from 'three';
+import { DepthTexture, Vector4, REVISION, createCanvasElement } from 'three';
 
 class CanvasRenderTarget {
 
@@ -6,6 +6,7 @@ class CanvasRenderTarget {
 
 		this.isCanvasRenderTarget = true;
 
+		this.canvas = parameters.canvas;
 		this.context = parameters.context;
 		this.domElement = parameters.domElement;
 		this.alpha = ( parameters.alpha === undefined ) ? true : parameters.alpha;
@@ -22,6 +23,8 @@ class CanvasRenderTarget {
 
 		}
 
+		this.samples = this.sampleCount;
+
 		this.depthTexture = new DepthTexture();
 
 		this.depth = true;
@@ -34,6 +37,25 @@ class CanvasRenderTarget {
 		this.viewport = new Vector4( 0, 0, this._width, this._height );
 		this.scissor = new Vector4( 0, 0, this._width, this._height );
 		this._scissorTest = false;
+
+	}
+
+	getDomElement() {
+
+		let domElement = this.domElement;
+
+		if ( ! domElement ) {
+
+			domElement = ( this.canvas !== undefined ) ? this.canvas : createCanvasElement();
+
+			// OffscreenCanvas does not have setAttribute, see #22811
+			if ( 'setAttribute' in domElement ) domElement.setAttribute( 'data-engine', `three.js r${REVISION} webgpu` );
+
+			this.domElement = domElement;
+
+		}
+
+		return domElement;
 
 	}
 

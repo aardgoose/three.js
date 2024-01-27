@@ -6,7 +6,7 @@
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<link type="text/css" rel="stylesheet" href="main.css">
 		<style>
-			.container {
+			#container {
 				padding-top: 3em;
 				display: grid;
 				grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -15,7 +15,7 @@
 				row-gap: 10px;
 			}
 
-			.container canvas {
+			#container canvas {
 				width: 200px;
 				height: 200px;
 				border: 1px solid white;
@@ -54,11 +54,13 @@
 
 			init();
 
-			function makeCanvasRenderTarget( id ) {
+			function makeCanvasRenderTarget( container ) {
 
-				const domElement = document.getElementById( id );
+				const canvasRenderTarget = new CanvasRenderTarget( { antialias: true } );
 
-				const canvasRenderTarget = new CanvasRenderTarget( { domElement, antialias: true } );
+				const domElement = canvasRenderTarget.getDomElement();
+				container.appendChild( canvasRenderTarget.getDomElement() );
+
 				canvasRenderTarget.setPixelRatio( window.devicePixelRatio );
 				canvasRenderTarget.setSize( domElement.clientWidth, domElement.clientHeight );
 
@@ -95,9 +97,11 @@
 
 				// create canvas render target
 
+				const container = document.getElementById( 'container' );
+
 				for ( let i = 0; i < 9; i ++ ) {
 
-					canvasRenderTargets.push( makeCanvasRenderTarget( `canvas${ i }` ) );
+					canvasRenderTargets.push( makeCanvasRenderTarget( container ) );
 
 				}
 
@@ -145,16 +149,6 @@
 			}
 
 		</script>
-		<div class="container">
-			<canvas id="canvas0"></canvas>
-			<canvas id="canvas1"></canvas>
-			<canvas id="canvas2"></canvas>
-			<canvas id="canvas3"></canvas>
-			<canvas id="canvas4"></canvas>
-			<canvas id="canvas5"></canvas>
-			<canvas id="canvas6"></canvas>
-			<canvas id="canvas7"></canvas>
-			<canvas id="canvas8"></canvas>
-		</div>
+		<div id="container"></div>
 	</body>
 </html>
