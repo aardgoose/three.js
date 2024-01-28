@@ -61,7 +61,6 @@ class TeeNode extends TempNode {
 
 	setup( builder ) {
 
-		// use this for rendering to prevent infinte loop
 		const textureNode  = this._textureNode;
 
 		if ( textureNode.isTextureNode !== true ) {
