@@ -1,4 +1,3 @@
-import ClippingContext from './ClippingContext.js';
 
 let _id = 0;
 
@@ -38,7 +37,7 @@ function getKeys( obj ) {
 
 export default class RenderObject {
 
-	constructor( nodes, geometries, renderer, object, material, scene, camera, lightsNode, renderContext ) {
+	constructor( nodes, geometries, renderer, object, material, scene, camera, lightsNode, renderContext, clippingContext ) {
 
 		this._nodes = nodes;
 		this._geometries = geometries;
@@ -62,9 +61,8 @@ export default class RenderObject {
 		this.pipeline = null;
 		this.vertexBuffers = null;
 
-		this.updateClipping( renderContext.clippingContext );
-
-		this.clippingContextVersion = this.clippingContext.version;
+		this.clippingContext = clippingContext;
+		this.clippingContextVersion = clippingContext !== null ? clippingContext.version : 0;
 
 		this.initialNodesCacheKey = this.getNodesCacheKey();
 		this.initialCacheKey = this.getCacheKey();
@@ -88,32 +86,13 @@ export default class RenderObject {
 
 	updateClipping( parent ) {
 
-		const material = this.material;
-
-		let clippingContext = this.clippingContext;
-
-		if ( Array.isArray( material.clippingPlanes ) ) {
-
-			if ( clippingContext === parent || ! clippingContext ) {
-
-				clippingContext = new ClippingContext();
-				this.clippingContext = clippingContext;
-
-			}
-
-			clippingContext.update( parent, material );
-
-		} else if ( this.clippingContext !== parent ) {
-
-			this.clippingContext = parent;
-
-		}
+		this.clippingContext = parent;
 
 	}
 
 	get clippingNeedsUpdate() {
 
-		if ( this.clippingContext.version === this.clippingContextVersion ) return false;
+		if ( this.clippingContext === null || this.clippingContext.version === this.clippingContextVersion ) return false;
 
 		this.clippingContextVersion = this.clippingContext.version;
 
@@ -200,8 +179,8 @@ export default class RenderObject {
 			if ( value !== null ) {
 
 				const type = typeof value;
-
 				if ( type === 'number' ) valueKey = value !== 0 ? '1' : '0'; // Convert to on/off, important for clearcoat, transmission, etc
+				else if ( type === 'boolean' ) valueKey = String( value );
 				else if ( type === 'object' ) {
 
 					valueKey = '{';
