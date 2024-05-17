@@ -24,7 +24,7 @@
 
 		<script type="module">
 			import * as THREE from 'three';
-			import { MeshBasicNodeMaterial, VolumeNodeMaterial, vec3, vec4, materialReference, smoothstep, If, Break, positionLocal, tslFn, mx_worley_noise_vec3, uniform, uv, NodeMaterial } from 'three/nodes';
+			import { MeshBasicNodeMaterial, VolumeNodeMaterial, vec3, positionGeometry, vec4, materialReference, smoothstep, If, Break, positionLocal, tslFn, mx_noise_vec3, mx_worley_noise_vec3, uniform, uv, NodeMaterial } from 'three/nodes';
 
 			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 			import { ImprovedNoise } from 'three/addons/math/ImprovedNoise.js';
@@ -41,10 +41,10 @@
 
 			async function init() {
 
-				renderer = new WebGPURenderer( { antialias: true, forceWebGL: false } );
+				renderer = new WebGPURenderer( { antialias: true, forceWebGL: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
-				renderer.setAnimationLoop( animate );
+//				renderer.setAnimationLoop( animate );
 				document.body.appendChild( renderer.domElement );
 
 				scene = new THREE.Scene();
@@ -80,38 +80,42 @@
 				// Texture
 
 				const size = 128;
-				const data = new Uint8Array( size * size * size );
 
-				let i = 0;
-				const scale = 0.05;
-				const perlin = new ImprovedNoise();
-				const vector = new THREE.Vector3();
+				//
 
-				for ( let z = 0; z < size; z ++ ) {
+				const rt = new THREE.WebGL3DRenderTarget( size, size, size );
 
-					for ( let y = 0; y < size; y ++ ) {
-
-						for ( let x = 0; x < size; x ++ ) {
-
-							const d = 1.0 - vector.set( x, y, z ).subScalar( size / 2 ).divideScalar( size ).length();
-							data[ i ] = ( 128 + 128 * perlin.noise( x * scale / 1.5, y * scale, z * scale / 1.5 ) ) * d * d;
-							i ++;
-
-						}
-
-					}
-
-				}
-
-				const texture = new THREE.Data3DTexture( data, size, size, size );
+				const texture = rt.texture;
 				texture.format = THREE.RedFormat;
 				texture.minFilter = THREE.LinearFilter;
 				texture.magFilter = THREE.LinearFilter;
 				texture.unpackAlignment = 1;
 				texture.needsUpdate = true;
 
-				//
+				const q = new QuadMesh();
+				const m = new NodeMaterial();
 
+				const u = uniform( 0, 'float' );
+				const noise_p = vec3( uv().mul( 7 ), u.div( size ).mul( 7 ) );
+
+				m.fragmentNode = vec4( mx_noise_vec3( noise_p ), 1 );
+				q.material = m;
+
+				renderer.init();
+				await renderer.renderAsync( new THREE.Scene(), new THREE.PerspectiveCamera() );
+
+				for ( let i = 0; i < size; i ++ ) {
+
+					renderer.setRenderTarget( rt, i );
+					u.value = i
+
+					q.render( renderer );
+
+				}
+
+				renderer.setRenderTarget( null );
+
+				renderer.setAnimationLoop( animate );
 				const geometry = new THREE.BoxGeometry( 1, 1, 1 );
 
 				const material = new VolumeNodeMaterial( {
@@ -125,6 +129,7 @@
 				material.range = 0.1;
 				material.threshold = 0.25;
 				material.opacity = 0.25;
+				material.vertexColors = true;
 
 				const range = materialReference( 'range', 'float' );
 				const threshold = materialReference( 'threshold', 'float' );
@@ -132,26 +137,32 @@
 
 				material.testNode = tslFn( ( { map, mapValue, probe, finalColor } ) => {
 
-					mapValue.assign( smoothstep( threshold.sub( range ), threshold.add( range ), mapValue ).mul( opacity ) );
+					If( mapValue.greaterThan( threshold ), () => {
 
-					const shading = map.uv( probe.add( vec3( - 0.01 ) ) ).r.sub( map.uv( probe.add( vec3( 0.01 ) ) ).r );
+						const p = vec3().temp().assign( probe ).addAssign( 0.5 );
 
-					const col = shading.mul( 3.0 ).add( probe.x.add( probe.y ).mul( 0.25 ) ).add( 0.2 );
-
-					finalColor.rgb.addAssign( finalColor.a.oneMinus().mul( mapValue ).mul( col ) );
-
-					finalColor.a.addAssign( finalColor.a.oneMinus().mul( mapValue ) );
-
-					If( finalColor.a.greaterThanEqual(  0.95 ), () => {
-
+						finalColor.rgb.assign( map.normal( p ).mul( 0.5 ).add( probe.mul( 1.5 ).add( 0.25 ) ) );
+						finalColor.a.assign( 1 );
 						Break();
 
 					} );
+
 
 				} );
 
 				mesh = new THREE.Mesh( geometry, material );
 
+				console.log( geometry );
+				const colors = [];
+
+				for ( let i = 0; i < 24; i += 3 ) {
+
+					colors[ i ] = 1;
+					colors[ i + 1 ] = 1;
+					colors[ i + 2 ] = 0.5;
+				}
+
+//				geometry.setAttribute( 'color', new THREE.Float32BufferAttribute( colors, 3 ) );
 				scene.add( mesh );
 
 				//

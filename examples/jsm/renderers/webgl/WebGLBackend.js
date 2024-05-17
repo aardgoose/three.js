@@ -1178,6 +1178,12 @@ class WebGLBackend extends Backend {
 
 			}
 
+			if ( renderTarget.isWebGL3DRenderTarget && fb !== undefined ) {
+				console.log( 'wooo');
+				gl.deleteFramebuffer( fb );
+				fb = undefined;
+			}
+
 			if ( fb === undefined ) {
 
 				fb = gl.createFramebuffer();
@@ -1203,11 +1209,19 @@ class WebGLBackend extends Backend {
 
 						const attachment = gl.COLOR_ATTACHMENT0 + i;
 
-						gl.framebufferTexture2D( gl.FRAMEBUFFER, attachment, gl.TEXTURE_2D, textureData.textureGPU, 0 );
+						if ( texture.isData3DTexture || texture.isDataArrayTexture ) {
+console.log( 'xx', cubeFace, textureData);
+							gl.framebufferTextureLayer( gl.FRAMEBUFFER, attachment, textureData.textureGPU, 0, cubeFace );
+
+						} else {
+
+							gl.framebufferTexture2D( gl.FRAMEBUFFER, attachment, gl.TEXTURE_2D, textureData.textureGPU, 0 );
+
+						}
+
+						renderTargetContextData.framebuffer = fb;
 
 					}
-
-					renderTargetContextData.framebuffer = fb;
 
 					state.drawBuffers( renderContext, fb );
 

@@ -234,13 +234,30 @@ class WebGPUBackend extends Backend {
 
 			for ( let i = 0; i < textures.length; i ++ ) {
 
-				const textureData = this.get( textures[ i ] );
+				const texture = textures [ i ];
+
+				let dimension, depthSlice, baseArrayLayer;
+
+				if ( texture.isData3DTexture === true ) {
+
+					dimension = GPUTextureViewDimension.ThreeD
+					depthSlice = renderContext.activeCubeFace;
+					baseArrayLayer = 0;
+
+				} else {
+
+					dimension = GPUTextureFormat.TwoD;
+					baseArrayLayer = renderContext.activeCubeFace;
+
+				}
+
+				const textureData = this.get( texture );
 
 				const textureView = textureData.texture.createView( {
 					baseMipLevel: renderContext.activeMipmapLevel,
 					mipLevelCount: 1,
-					baseArrayLayer: renderContext.activeCubeFace,
-					dimension: GPUTextureViewDimension.TwoD
+					baseArrayLayer,
+					dimension
 				} );
 
 				let view, resolveTarget;
@@ -260,6 +277,7 @@ class WebGPUBackend extends Backend {
 				colorAttachments.push( {
 					view,
 					resolveTarget,
+					depthSlice,
 					loadOp: GPULoadOp.Load,
 					storeOp: GPUStoreOp.Store
 				} );
@@ -267,7 +285,6 @@ class WebGPUBackend extends Backend {
 			}
 
 			const depthTextureData = this.get( renderContext.depthTexture );
-
 			const depthStencilAttachment = {
 				view: depthTextureData.texture.createView(),
 			};
@@ -283,6 +300,9 @@ class WebGPUBackend extends Backend {
 			renderTargetData.height = renderTarget.height;
 			renderTargetData.samples = renderTarget.samples;
 			renderTargetData.activeMipmapLevel = renderTarget.activeMipmapLevel;
+
+		} else if ( renderTarget.isWebGL3dRenderTarget ) {
+			console.log( 'c');
 
 		}
 

@@ -1,7 +1,8 @@
 import NodeMaterial, { addNodeMaterial } from './NodeMaterial.js';
 import { varying } from '../core/VaryingNode.js';
-import { property } from '../core/PropertyNode.js';
+import { property, diffuseColor } from '../core/PropertyNode.js';
 import { materialReference } from '../accessors/MaterialReferenceNode.js';
+import { materialColor } from '../accessors/MaterialNode.js';
 import { modelWorldMatrixInverse } from '../accessors/ModelNode.js';
 import { cameraPosition } from '../accessors/CameraNode.js';
 import { positionGeometry } from '../accessors/PositionNode.js';
@@ -27,7 +28,7 @@ class VolumeNodeMaterial extends NodeMaterial {
 
 	setup( builder ) {
 
-		const map = texture3D( this.map, null, 0 );
+		const map = texture3D( this.vmap, null, 0 );
 
 		const hitBox = tslFn( ( { orig, dir } ) => {
 
@@ -51,6 +52,8 @@ class VolumeNodeMaterial extends NodeMaterial {
 
 		this.fragmentNode = tslFn( () => {
 
+			this.setupDiffuseColor( builder );
+
 			const vOrigin = varying( vec3( modelWorldMatrixInverse.mul( vec4( cameraPosition, 1.0 ) ) ) );
 			const vDirection = varying( positionGeometry.sub( vOrigin ) );
 
@@ -67,7 +70,7 @@ class VolumeNodeMaterial extends NodeMaterial {
 
 			delta.divAssign( materialReference( 'steps', 'float' ) );
 
-			const ac = property( 'vec4', 'ac' ).assign( vec4( materialReference( 'base', 'color' ), 0.0 ) );
+			diffuseColor.a.assign( 0 );
 
 			loop( { type: 'float', start: bounds.x, end: bounds.y, update: '+= delta' }, () => {
 
@@ -75,12 +78,12 @@ class VolumeNodeMaterial extends NodeMaterial {
 
 				if ( this.testNode !== null ) {
 
-					this.testNode( { map: map, mapValue: d, probe: p, finalColor: ac } ).append();
+					this.testNode( { map: map, mapValue: d, probe: p, finalColor: diffuseColor } ).append();
 
 				} else {
 
 					// default to show surface of mesh
-					ac.a.assign( 1 );
+					diffuseColor.a.assign( 1 );
 					Break();
 
 				}
@@ -89,9 +92,9 @@ class VolumeNodeMaterial extends NodeMaterial {
 
 			} );
 
-			ac.a.equal( 0 ).discard();
+			diffuseColor.a.equal( 0 ).discard();
 
-			return vec4( ac );
+			return diffuseColor;
 
 		} )();
 

@@ -398,7 +398,7 @@ class WebGLTextureUtils {
 						}
 
 					} else {
-
+console.log( 'h', texture );
 						gl.texSubImage3D( gl.TEXTURE_2D_ARRAY, i, 0, 0, 0, mipmap.width, mipmap.height, image.depth, glFormat, glType, mipmap.data );
 
 					}
