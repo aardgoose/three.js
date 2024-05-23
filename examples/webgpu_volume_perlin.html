@@ -24,7 +24,7 @@
 
 		<script type="module">
 			import * as THREE from 'three';
-			import { Break, If, VolumeNodeMaterial, vec3, materialReference, tslFn } from 'three/nodes';
+			import { Break, If, VolumeNodeMaterial, vec3,vec2, float, oscSine, timerLocal, materialReference, tslFn } from 'three/nodes';
 
 			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 			import { ImprovedNoise } from 'three/addons/math/ImprovedNoise.js';
@@ -82,8 +82,8 @@
 
 				const texture = new THREE.Data3DTexture( data, size, size, size );
 				texture.format = THREE.RedFormat;
-				texture.minFilter = THREE.LinearFilter;
-				texture.magFilter = THREE.LinearFilter;
+//				texture.minFilter = THREE.LinearFilter;
+//				texture.magFilter = THREE.LinearFilter;
 				texture.unpackAlignment = 1;
 				texture.needsUpdate = true;
 
@@ -102,12 +102,42 @@
 				const threshold = materialReference( 'threshold', 'float' );
 
 				material.testNode = tslFn( ( { map, mapValue, probe, finalColor } ) => {
-
+/*
 					If( mapValue.greaterThan( threshold ), () => {
+
 
 						const p = vec3().temp().assign( probe ).addAssign( 0.5 );
 
 						finalColor.rgb.assign( map.normal( p ).mul( 0.5 ).add( probe.mul( 1.5 ).add( 0.25 ) ) );
+						finalColor.a.assign( 1 );
+						Break();
+
+					} );
+*/
+
+//					float sdTorus( vec3 p, vec2 t )
+//					{
+//					  vec2 q = vec2(length(p.xz)-t.x,p.y);
+//						return length(q)-t.y;
+//					}
+
+					const size = vec3( 0.3, 0.3, 0.2 );
+
+//					const c = probe.sub( size.mul( probe.div( size ).round() ) );
+				//	const c = probe;
+
+					const t = vec2( 0.4, 0.1 );
+					const q = vec2( probe.xz.length().sub( t.x ), probe.y );
+					const c = q.length().sub( t.y );
+//
+//					If( c.lengthSq().lessThanEqual( threshold ), () => {
+					c.addAssign( probe.x.add( oscSine( timerLocal( 0.2 ) ) ).mul( probe.z.abs().mul( 20 ) ).sin().mul( 0.03 ).mul( probe.y.add( oscSine( timerLocal( 0.03 ) ) ).mul(30).sin() ) );
+					If( c.abs().lessThan( 0.02 ), () => {
+
+						const p = vec3().temp().assign( probe ).addAssign( 0.5 );
+
+						finalColor.rgb.assign( map.normal( p ) ); //.mul( 0.5 ).add( probe.mul( 1.5 ).add( 0.25 ) ) );
+
 						finalColor.a.assign( 1 );
 						Break();
 
