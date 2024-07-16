@@ -14,9 +14,6 @@ class ClippingContext {
 
 		this.clipIntersection = null;
 
-		this.unionOffset = 0;
-		this.intersectionOffset = 0;
-
 		this.intersectionPlanes = [];
 		this.unionPlanes = [];
 
@@ -59,6 +56,7 @@ class ClippingContext {
 	update( parentContext, clippingGroup ) {
 
 		let update = false;
+		let parentChanged = false;
 
 		if ( parentContext.version !== this.parentVersion ) {
 
@@ -70,21 +68,21 @@ class ClippingContext {
 			this.viewNormalMatrix = parentContext.viewNormalMatrix;
 			this.shadowPass = parentContext.shadowPass;
 
+			parentChanged = true;
+
 		}
 
-		if ( this.clipIntersection !== clippingGroup.clipIntersection ) {
+		if ( this.clipIntersection !== clippingGroup.clipIntersection || parentChanged ) {
 
 			this.clipIntersection = clippingGroup.clipIntersection;
 
 			if ( this.clipIntersection ) {
 
-				this.unionPlanes.length = parentContext.unionOffset;
-				this.unionOffset = parentContext.unionOffset;
+				this.unionPlanes.length = parentContext.unionPlanes.length;
 
 			} else {
 
-				this.intersectionPlanes.length = parentContext.intersectionOffset;
-				this.intersectionOffset = parentContext.intersectionOffset;
+				this.intersectionPlanes.length = parentContext.intersectionPlanes.length;
 
 			}
 
@@ -95,31 +93,22 @@ class ClippingContext {
 
 		let dstClippingPlanes;
 		let offset;
-		let dstLength;
 
 		if ( this.clipIntersection ) {
 
 			dstClippingPlanes = this.intersectionPlanes;
-			offset = parentContext.intersectionOffset;
-
-			dstLength = offset + l;
-
-			this.intersectionOffset = dstLength;
+			offset = parentContext.intersectionPlanes.length;
 
 		} else {
 
 			dstClippingPlanes = this.unionPlanes;
-			offset = parentContext.unionOffset;
-
-			dstLength = offset + l;
-
-			this.unionOffset = dstLength;
+			offset = parentContext.unionPlanes.length;
 
 		}
 
-		if ( dstClippingPlanes.length !== dstLength ) {
+		if ( dstClippingPlanes.length !== offset + l ) {
 
-			dstClippingPlanes.length = dstLength;
+			dstClippingPlanes.length = offset + l;
 
 			for ( let i = 0; i < l; i ++ ) {
 
