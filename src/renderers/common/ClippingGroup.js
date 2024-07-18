@@ -11,6 +11,7 @@ class ClippingGroup extends Group {
 		this.enabled = true;
 		this.clipIntersection = false;
 		this.clipShadows = false;
+		this.inherit = true;
 
 	}
 

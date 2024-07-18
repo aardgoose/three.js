@@ -21,6 +21,7 @@ class ClippingContext {
 		this.viewNormalMatrix = new Matrix3();
 		this.clippingGroupContexts = new WeakMap();
 		this.shadowPass = false;
+		this.inherit = null;
 
 	}
 
@@ -60,9 +61,6 @@ class ClippingContext {
 
 		if ( parentContext.version !== this.parentVersion ) {
 
-			this.intersectionPlanes = Array.from( parentContext.intersectionPlanes );
-			this.unionPlanes = Array.from( parentContext.unionPlanes );
-
 			this.parentVersion = parentContext.version;
 			this.viewMatrix = parentContext.viewMatrix;
 			this.viewNormalMatrix = parentContext.viewNormalMatrix;
@@ -72,17 +70,36 @@ class ClippingContext {
 
 		}
 
+		if ( this.inherit !== clippingGroup.inherit || parentChanged ) {
+
+			this.inherit = clippingGroup.inherit;
+
+			if ( this.inherit ) {
+
+				this.intersectionPlanes = Array.from( parentContext.intersectionPlanes );
+				this.unionPlanes = Array.from( parentContext.unionPlanes );
+
+
+			} else {
+
+				this.intersectionPlanes = [];
+				this.unionPlanes = [];
+
+			}
+
+		}
+
 		if ( this.clipIntersection !== clippingGroup.clipIntersection || parentChanged ) {
 
 			this.clipIntersection = clippingGroup.clipIntersection;
 
 			if ( this.clipIntersection ) {
 
-				this.unionPlanes.length = parentContext.unionPlanes.length;
+				this.unionPlanes.length = this.inherit ? parentContext.unionPlanes.length : 0;
 
 			} else {
 
-				this.intersectionPlanes.length = parentContext.intersectionPlanes.length;
+				this.intersectionPlanes.length = this.inherit ? parentContext.intersectionPlanes.length : 0;
 
 			}
 
@@ -97,12 +114,12 @@ class ClippingContext {
 		if ( this.clipIntersection ) {
 
 			dstClippingPlanes = this.intersectionPlanes;
-			offset = parentContext.intersectionPlanes.length;
+			offset = this.inherit ? parentContext.intersectionPlanes.length : 0;;
 
 		} else {
 
 			dstClippingPlanes = this.unionPlanes;
-			offset = parentContext.unionPlanes.length;
+			offset = this.inherit ? parentContext.unionPlanes.length : 0;
 
 		}
 
