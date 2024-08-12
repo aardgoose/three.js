@@ -26,12 +26,13 @@ class Line2NodeMaterial extends NodeMaterial {
 		this.normals = false;
 		this.lights = false;
 
+		this.addBuildProperty( 'dashed', params.dashed );
+		this.addBuildProperty( 'worldUnits', false );
+		this.addBuildProperty( 'alphaToCoverage', true );
+
 		this.setDefaultValues( _defaultValues );
 
-		this.useAlphaToCoverage = true;
 		this.useColor = params.vertexColors;
-		this.useDash = params.dashed;
-		this.useWorldUnits = false;
 
 		this.dashOffset = 0;
 		this.lineWidth = 1;
@@ -380,56 +381,28 @@ class Line2NodeMaterial extends NodeMaterial {
 	}
 
 
-	get worldUnits() {
+	addBuildProperty( name, value ) {
 
-		return this.useWorldUnits;
+		const _name = '_' + name;
 
-	}
+		this[ _name ] = value;
 
-	set worldUnits( value ) {
+		Object.defineProperty( this, name, {
 
-		if ( this.useWorldUnits !== value ) {
+			get() { return this[ _name ]; },
 
-			this.useWorldUnits = value;
-			this.needsUpdate = true;
+			set( value ) {
 
-		}
+				if ( value !== this[ _name ] ) {
 
-	}
+					this[ _name ] = value;
+					this.needsUpdate = true;
 
+				}
 
-	get dashed() {
+			}
 
-		return this.useDash;
-
-	}
-
-	set dashed( value ) {
-
-		if ( this.useDash !== value ) {
-
-			this.useDash = value;
-			this.needsUpdate = true;
-
-		}
-
-	}
-
-
-	get alphaToCoverage() {
-
-		return this.useAlphaToCoverage;
-
-	}
-
-	set alphaToCoverage( value ) {
-
-		if ( this.useAlphaToCoverage !== value ) {
-
-			this.useAlphaToCoverage = value;
-			this.needsUpdate = true;
-
-		}
+		} );
 
 	}
 
