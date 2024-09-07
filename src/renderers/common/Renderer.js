@@ -454,6 +454,8 @@ class Renderer {
 
 			const renderObjects = renderBundleData.renderObjects;
 
+			renderBundleData.needsUpdate = false;
+
 			for ( let i = 0, l = renderObjects.length; i < l; i ++ ) {
 
 				const renderObject = renderObjects[ i ];
@@ -461,11 +463,13 @@ class Renderer {
 				this._nodes.updateBefore( renderObject );
 
 				this._nodes.updateForRender( renderObject );
-				this._bindings.updateForRender( renderObject );
+				this._bindings.updateForRender( renderObject, renderBundleData );
 
 				this._nodes.updateAfter( renderObject );
 
 			}
+
+			bundleGroup.needsUpdate = renderBundleData.needsUpdate;
 
 		}
 

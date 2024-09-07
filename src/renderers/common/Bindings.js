@@ -74,17 +74,17 @@ class Bindings extends DataMap {
 
 	}
 
-	updateForRender( renderObject ) {
+	updateForRender( renderObject, renderBundleData ) {
 
-		this._updateBindings( this.getForRender( renderObject ) );
+		this._updateBindings( this.getForRender( renderObject ), renderBundleData );
 
 	}
 
-	_updateBindings( bindings ) {
+	_updateBindings( bindings, renderBundleData = null ) {
 
 		for ( const bindGroup of bindings ) {
 
-			this._update( bindGroup, bindings );
+			this._update( bindGroup, bindings, renderBundleData );
 
 		}
 
@@ -110,7 +110,7 @@ class Bindings extends DataMap {
 
 	}
 
-	_update( bindGroup, bindings ) {
+	_update( bindGroup, bindings, renderBundleData ) {
 
 		const { backend } = this;
 
@@ -191,6 +191,8 @@ class Bindings extends DataMap {
 		}
 
 		if ( needsBindingsUpdate === true ) {
+
+			if ( renderBundleData !== null ) renderBundleData.needsUpdate = true;
 
 			this.backend.updateBindings( bindGroup, bindings );
 
