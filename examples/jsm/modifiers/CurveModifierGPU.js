@@ -11,10 +11,13 @@ import {
 	RepeatWrapping,
 	Mesh,
 	InstancedMesh,
-	LinearFilter
+	LinearFilter,
+	DynamicDrawUsage,
+	InstancedBufferGeometry,
+	InstancedBufferAttribute,
 } from 'three';
 
-import { modelWorldMatrix, normalLocal, vec2, vec3, vec4, mat3, varyingProperty, texture, reference, Fn, select, positionLocal } from 'three/tsl';
+import { attribute, modelWorldMatrix, normalLocal, vec2, vec3, vec4, mat3, varyingProperty, texture, reference, Fn, select, positionLocal } from 'three/tsl';
 
 /**
  * Make a new DataTexture to store the descriptions of the curves.
@@ -109,7 +112,7 @@ export function getUniforms( splineTexture ) {
 
 }
 
-export function modifyShader( material, uniforms, numberOfCurves ) {
+export function modifyShader( material, uniforms, numberOfCurves, isInstanced ) {
 
 	const spineTexture = uniforms.spineTexture;
 
@@ -129,12 +132,30 @@ export function modifyShader( material, uniforms, numberOfCurves ) {
 		const bend = flow.greaterThan( 0 ).toVar();
 		const xWeight = select( bend, 0, 1 ).toVar();
 
-		const spinePortion = select( bend, worldPos.x.add( spineOffset ).div( spineLength ), 0 );
-		const mt = spinePortion.mul( pathSegment ).add( pathOffset ).mul( textureStacks ).toVar();
+		const instanceTranslation = attribute( 'instanceTranslation' );
+
+		let mt, spinePortion;
+
+		if ( isInstanced ) {
+
+			const pathOffsetFromInstance = instanceTranslation.z.toVar();
+			const spineLengthFromInstance = instanceTranslation.x.toVar();
+
+			spinePortion = select( bend, worldPos.x.add( spineOffset ).div( spineLengthFromInstance ), 0 );
+			mt = spinePortion.mul( pathSegment ).add( pathOffset ).add( pathOffsetFromInstance ).mul( textureStacks ).toVar();
+
+		} else {
+
+			spinePortion = select( bend, worldPos.x.add( spineOffset ).div( spineLength ), 0 );
+			mt = spinePortion.mul( pathSegment ).add( pathOffset ).mul( textureStacks ).toVar();
+
+		}
 
 		mt.assign( mt.mod( textureStacks ) );
 
 		const rowOffset = mt.floor().toVar();
+
+		if ( isInstanced ) rowOffset.addAssign( instanceTranslation.y.mul( TEXTURE_HEIGHT ) );
 
 		const spinePos = texture( spineTexture, vec2( mt, rowOffset.add( 0.5 ).div( textureScale ) ) ).xyz;
 
@@ -152,10 +173,16 @@ export function modifyShader( material, uniforms, numberOfCurves ) {
 
 	material.normalNode = varyingProperty( 'vec3', 'curveNormal' );
 
+	if ( isInstanced ) {
+
+		material.colorNode = attribute( 'instanceColor' );
+
+	}
+
 }
 
 /**
- * A helper class for making meshes bend aroudn curves
+ * A helper class for making meshes bend around curves
  */
 export class Flow {
 
@@ -168,6 +195,8 @@ export class Flow {
 		const obj3D = mesh.clone();
 		const splineTexure = initSplineTexture( numberOfCurves );
 		const uniforms = getUniforms( splineTexure );
+
+		const isInstanced = obj3D.geometry.isInstancedBufferGeometry === true;
 
 		obj3D.traverse( function ( child ) {
 
@@ -183,7 +212,7 @@ export class Flow {
 					for ( const material of child.material ) {
 
 						const newMaterial = material.clone();
-						modifyShader( newMaterial, uniforms, numberOfCurves );
+						modifyShader( newMaterial, uniforms, numberOfCurves, isInstanced );
 						materials.push( newMaterial );
 
 					}
@@ -193,7 +222,7 @@ export class Flow {
 				} else {
 
 					child.material = child.material.clone();
-					modifyShader( child.material, uniforms, numberOfCurves );
+					modifyShader( child.material, uniforms, numberOfCurves, isInstanced );
 
 				}
 
@@ -227,6 +256,116 @@ export class Flow {
 	moveAlongCurve( amount ) {
 
 		this.uniforms.pathOffset += amount;
+
+	}
+
+}
+
+
+function _makeInstancedMesh( mesh, instanceTranslation, instanceColor, count ) {
+
+	const instancedGeometry = new InstancedBufferGeometry().copy( mesh.geometry );
+
+	instancedGeometry.setAttribute( 'instanceTranslation', instanceTranslation );
+	instancedGeometry.setAttribute( 'instanceColor', instanceColor );
+
+	instancedGeometry.instanceCount = count;
+
+	const instanceMesh = new Mesh(
+		instancedGeometry,
+		mesh.material,
+		count
+	);
+
+	instanceMesh.frustumCulled = false;
+
+	return instanceMesh;
+
+}
+
+/**
+ * A helper class for creating instanced versions of flow, where the instances are placed on the curve.
+ */
+export class InstancedFlow extends Flow {
+
+	/**
+	 *
+	 * @param {number} count The number of instanced elements
+	 * @param {number} curveCount The number of curves to preallocate for
+	 * @param {Geometry} geometry The geometry to use for the instanced mesh
+	 * @param {Material} material The material to use for the instanced mesh
+	 */
+	constructor( count, curveCount, mesh ) {
+
+		const instanceTranslation = new InstancedBufferAttribute( new Float32Array( count * 3 ), 3 );
+		const instanceColor = new InstancedBufferAttribute( new Float32Array( count * 3 ), 3 );
+
+		instanceTranslation.usage = DynamicDrawUsage;
+
+		// TODO replace tree below mesh
+		const instanceMesh = _makeInstancedMesh( mesh, instanceTranslation, instanceColor, count );
+
+		super( instanceMesh, curveCount );
+
+		this.instanceTranslation = instanceTranslation;
+		this.instanceColor = instanceColor;
+
+		this.offsets = new Array( count ).fill( 0 );
+		this.whichCurve = new Array( count ).fill( 0 );
+
+	}
+
+	/**
+	 * The extra information about which curve and curve position is stored in the translation components of the matrix for the instanced objects
+	 * This writes that information to the matrix and marks it as needing update.
+	 *
+	 * @param {number} index of the instanced element to update
+	 */
+	writeChanges( index ) {
+
+		this.instanceTranslation.setXYZ(
+			index,
+			this.curveLengthArray[ this.whichCurve[ index ] ],
+			this.whichCurve[ index ],
+			this.offsets[ index ]
+		);
+
+		this.instanceTranslation.needsUpdate = true;
+
+	}
+
+	/**
+	 * Move an individual element along the curve by a specific amount
+	 *
+	 * @param {number} index Which element to update
+	 * @param {number} offset Move by how much
+	 */
+	moveIndividualAlongCurve( index, offset ) {
+
+		this.offsets[ index ] += offset;
+		this.writeChanges( index );
+
+	}
+
+	/**
+	 * Select which curve to use for an element
+	 *
+	 * @param {number} index the index of the instanced element to update
+	 * @param {number} curveNo the index of the curve it should use
+	 */
+	setCurve( index, curveNo ) {
+
+		if ( isNaN( curveNo ) ) throw Error( 'curve index being set is Not a Number (NaN)' );
+		this.whichCurve[ index ] = curveNo;
+		this.writeChanges( index );
+
+	}
+
+	setColorAt( index, color ) {
+
+		this.instanceColor.setXYZ( index, color.r, color.g, color.b );
+
+		this.instanceColor.needsUpdate = true;
 
 	}
 

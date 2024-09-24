@@ -363,6 +363,7 @@
 		"webgpu_mesh_batch",
 		"webgpu_mirror",
 		"webgpu_modifier_curve",
+		"webgpu_modifier_curve_instanced",
 		"webgpu_morphtargets",
 		"webgpu_morphtargets_face",
 		"webgpu_mrt",
