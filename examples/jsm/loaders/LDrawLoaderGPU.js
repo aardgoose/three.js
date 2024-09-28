@@ -1,5 +1,5 @@
 import { LineBasicNodeMaterial } from 'three';
-import { attribute, cameraProjectionMatrix, materialColor, modelViewMatrix, vec2, vec4,varyingProperty, Fn, positionLocal } from 'three/tsl';
+import { attribute, cameraProjectionMatrix, materialColor, modelViewMatrix, vec2, vec4, varyingProperty, Fn, positionLocal } from 'three/tsl';
 
 import { LDrawLoader } from './LDrawLoaderCore.js';
 
@@ -18,7 +18,7 @@ class LDrawConditionalLineMaterial extends LineBasicNodeMaterial {
 		this.positionNode = Fn( () => {
 
 			const control0 = attribute( 'control0' );
-			const control1  = attribute( 'control1' );
+			const control1 = attribute( 'control1' );
 			const direction = attribute( 'direction' );
 
 			const discardFlag = varyingProperty( 'float', 'discardFlag' );
